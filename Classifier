@@ -1,0 +1,295 @@
+
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import glob
+
+class Model:
+def __init__(self):
+        # Model 
+        self.model = None
+        self.modelName = None
+        showPlot = True
+        
+        # Training and testing data
+        self.trainingXdata = None
+        self.trainingYdata = None
+        self.testingXdata = None
+        self.testingYdata = None
+        
+        # Classifications
+        self.classificationLabels = ['dry', 'frost', 'wet', 'rime','glaze','mixed']
+  
+def getTrainingData(self, showPlot):
+    
+        # Initializer
+    xData = []
+    yData = []
+    dataNames = []
+
+
+        # Get all files paths =
+    paths=glob.glob('C:/Users/NatalieLauf/Desktop/November 2022 Raw Data/Midas/*.csv')
+        
+        # Prep the figure
+if showPlot:
+   fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+   fig.set_size_inches(11, 7)
+   
+        # Read in raw file        
+for filePath in paths:
+    df = pd.read_csv(filePath, names = ['Capacitance [pF]', 'Capacitance [pF].1', 'Capacitance [pF].2','Capacitance [pF].3', 'Humidity [%]', 'Humidity [%].1', 'Humidity [%].2','Humidity [%].3' 'FilmTemperature [°C]','FilmTemperature [°C].1','FilmTemperature [°C].2','FilmTemperature [°C].3','Time Stamp','IceType','Label','Flag'], skiprows = 1, delimiter = ',')
+    dataNames.append(filePath.replace('C:/Users/NatalieLauf/Desktop/November 2022 Raw Data/Midas\\','').replace('.csv',''))
+
+            # Iterate through data frame and arrange data for training
+for _, row in df.iterrows():
+      xData.append([row['Capacitance [pF].1'], row['FilmTemperature [°C].1'], row['Humidity [%].1']]) # row['Board-H'], row['Board-T']
+      yData.append(self.classificationLabels.index(row['IceType']))
+            
+            # Plotting
+if showPlot:
+                ax1.plot(df['Capacitance [pF].1'].to_numpy())
+                ax1.set_title('Film Capacitance')
+                
+                ax2.plot(df['FilmTemperature [°C].1'].to_numpy())
+                ax2.set_title('Film Temperature')
+
+                ax3.plot(df['Humidity [%].1'].to_numpy())
+                ax3.set_title('Board Humidity')
+                
+                ax4.plot(df['FilmTemperature [°C].1'].to_numpy())
+                ax4.set_title('Board Temperature')
+
+if showPlot:
+            # Format and show the figure
+            ax2.legend(loc='center left', labels=dataNames, bbox_to_anchor=(1, 0.5))
+            plt.show()
+        
+        # Convert data to numpy 
+self.trainingXdata = np.array(xData)
+self.trainingYdata = np.array(yData)
+
+def splitData(self, testSizePercentage):
+    # Split training and testing data 
+    self.trainingXdata, self.testingXdata, self.trainingYdata, self.testingYdata = train_test_split(self.trainingXdata, self.trainingYdata, test_size = testSizePercentage)
+    
+def trainSVC(self):
+    from sklearn.svm import SVC
+    self.model = SVC(gamma = 0.001)
+    self.model.fit(self.trainingXdata, self.trainingYdata) 
+    self.modelName = 'SVC'
+
+def trainRandomForest(self):
+    from sklearn.ensemble import RandomForestClassifier
+    self.model = RandomForestClassifier()
+    self.model.fit(self.trainingXdata, self.trainingYdata)
+    self.modelName = 'Random Forest'
+    
+def trainDecisionTree(self):
+    from sklearn.tree import DecisionTreeClassifier
+    self.model = DecisionTreeClassifier()
+    self.model.fit(self.trainingXdata, self.trainingYdata)
+    print(f'Accuracy - : {self.model.score(self.trainingXdata, self.trainingYdata):.3f}')
+    self.modelName = 'Decision Tree'
+    
+def trainSEFR(self):
+    from sefr import SEFR
+    self.model = SEFR()
+    self.model.fit(self.trainingXdata, self.trainingYdata)
+    self.modelName = 'SEFR'
+
+def trainXGBoost(self):
+    # ISSUE: Cant generate C code, can create dummy data but leaving out for now
+    # https://github.com/eloquentarduino/micromlgen/issues/5
+    from xgboost import XGBClassifier
+    self.model = XGBClassifier(use_label_encoder = False, eval_metric = 'mlogloss')
+    self.model.fit(self.trainingXdata, self.trainingYdata)
+    self.modelName = 'XGBoost'
+
+def trainGaussianNB(self):
+    from sklearn.naive_bayes import GaussianNB
+    self.model = GaussianNB()
+    self.model.fit(self.trainingXdata, self.trainingYdata)
+    self.modelName = 'trainGaussianNB'
+
+def trainOneClassSVM(self):
+    from sklearn.svm import OneClassSVM
+    self.model = OneClassSVM(gamma = 0.001)
+    self.model.fit(self.trainingXdata, self.trainingYdata)
+    self.modelName = 'One Class SVM'
+    
+def evaluate(self):
+    # Predict the response
+    yPred = self.model.predict(self.testingXdata)
+    print('{0:15} {1} %'.format(self.modelName, round(metrics.accuracy_score(self.testingYdata, yPred) * 100)))
+
+def portModelC(self):
+    # Port model to C code
+    from micromlgen import port
+    print('Starting C port...\n')
+    print(port(self.model))
+
+def portModelJava(self):
+    # Get around recursion limits (potential for crash)
+    import sys
+    sys.setrecursionlimit(10000)
+
+    # Port model to Java code
+    import m2cgen as m2c
+    print('Starting Java port...\n')
+    # print(m2c.export_to_java(self.model))
+    print(m2c.export_to_java(self.model),  file=open('log.txt', 'w'))
+    print("Saved")
+
+def compareModels(self):
+    # Run through all the different classifiers
+    print('{0:15} {1}'.format('\nClassifier', 'Accuracy'))
+    print('-----------------------')
+        
+    self.trainSVC()
+    self.evaluate()
+    
+    self.trainRandomForest()
+    self.evaluate()
+    
+    self.trainDecisionTree()
+    self.evaluate()
+    
+    self.trainSEFR()
+    self.evaluate()
+    
+    self.trainGaussianNB()
+    self.evaluate()
+            
+    print()
+
+def plotAllModelBoundaries(self):
+    # Run through all the different classifiers
+    print('Go get a beer, this might take a while...')
+
+    # Disable warnings
+    import warnings
+    warnings.filterwarnings("ignore")
+
+    # Plot all boundaries
+    # self.trainSVC()
+    # self.plotBoundaries()
+    
+    # self.trainRandomForest()
+    # self.plotBoundaries()
+    # self.plot_decision_regions(self.trainingXdata, self.trainingYdata, legend=2)
+
+    # self.trainDecisionTree()
+    # self.plotBoundaries()
+            
+    # self.trainSEFR()
+    # self.plotBoundaries()
+    
+    # self.trainGaussianNB()
+    # self.plotBoundaries()
+
+    # Turn warnings back on
+    warnings.resetwarnings()
+
+def predict(self, data):
+    # Predict classification based on model
+    return self.model.predict(data)
+
+def plotBoundaries(self):
+    # Import required packages
+    import matplotlib.pyplot as plt
+    from sklearn.decomposition import PCA
+    from mlxtend.plotting import plot_decision_regions
+             
+    # Project X into 2d
+    X = PCA(n_components=2).fit_transform(self.trainingXdata)
+    ax = plot_decision_regions(self.trainingXdata, 
+                               self.trainingYdata.astype(np.uint8),
+                               clf = self.model,
+                               legend=0)
+
+    handles, _ = ax.get_legend_handles_labels()
+    ax.legend(handles, self.classificationLabels, framealpha=0.3, scatterpoints=1)
+    plt.title(self.modelName)
+    plt.show()
+
+def plotPCA(self):
+    # Import required packages
+    from sklearn.decomposition import PCA
+    from matplotlib import pyplot as plt
+    
+    # Linear dimensionality reduction using Singular Value Decomposition of the data to project it to a lower dimensional space
+    if len(self.trainingXdata[0]) > 2:
+        # Squash data
+        pca = PCA(n_components = 3)
+        pca.fit(self.trainingXdata)
+        Xpca = pca.fit_transform(self.trainingXdata)
+
+        # 3D figure
+        ax = plt.axes(projection = '3d')
+        
+        # Loop through each classification
+        for i in range(0, int(self.trainingYdata.max()) + 1):
+            Xtemp = Xpca[self.trainingYdata == i]
+            ax.scatter3D(Xtemp[:, 0], Xtemp[:, 1], Xtemp[:, 2])
+
+        # Format the plot
+        ax.legend(self.classificationLabels, loc = 'upper center', ncol = 3)
+        ax.set_xlabel("PCA Axis 1")
+        ax.set_ylabel("PCA Axis 2")
+        ax.set_zlabel("PCA Axis 3")
+
+        # Show plot
+        plt.show()
+
+    elif len(self.trainingXdata[0]) == 2:
+        # Squash data
+        pca = PCA(n_components = 2)
+        pca.fit(self.trainingXdata)
+        Xpca = pca.fit_transform(self.trainingXdata)
+
+        # Create figure
+        fig = plt.figure(figsize=(8, 4), dpi=100)
+        ax = plt.gca()
+
+        # Loop through each classification
+        for i in range(0, int(self.trainingYdata.max()) + 1):
+            Xtemp = Xpca[self.trainingYdata == i]
+            ax.scatter(Xtemp[:, 1], Xtemp[:, 0])
+
+        # Show the plot
+        ax.legend(self.classificationLabels)
+        ax.set_xlabel("PCA Axis 1")
+        ax.set_ylabel("PCA Axis 2")
+
+        # Show plot
+        plt.show()
+
+    else:
+        print('Error: Is 1D PCA analysis a thing?')
+
+def main():
+    m = Model()
+    m.getTrainingData(showPlot=True)
+    m.splitData(0.8)
+    m.compareModels()
+    m.plotPCA()
+    m.plotAllModelBoundaries()
+
+    m.trainDecisionTree()
+
+    m.trainSVC()
+    m.trainRandomForest()
+    m.portModelJava()
+
+    m.trainLinearSVC()
+    m.portModelJava()
+    m.portModelC()
+
+    
+if __name__ == '__main__':
+    main()
+
